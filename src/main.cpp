@@ -36,6 +36,29 @@
 #define C3        PD5
 #define C4        PD7
 
+#define SERVO PB1
+
+// ----------------------------------------------------------------
+// Color definitions
+// ----------------------------------------------------------------
+#define BLACK   0x0000
+#define WHITE   0xFFFF
+#define RED     0xF800
+#define GREEN   0x07E0
+#define BLUE    0x001F
+#define YELLOW  0xFFE0
+#define CYAN    0x07FF
+
+
+// Screen is 240 wide, 320 tall. At scale 3, each char is 18x24px.
+// That gives us 13 chars per row, 13 rows per screen.
+#define CHAR_SCALE  3
+#define CHAR_W      (6 * CHAR_SCALE)   // 18
+#define CHAR_H      (8 * CHAR_SCALE)   // 24
+#define COLS        (240 / CHAR_W)     // 13 chars per row
+#define ROWS        (320 / CHAR_H)     // 13 rows
+
+
 // Key layout matching physical keypad
 static const char keymap[4][4] = {
     {'1', '2', '3', 'A'},
@@ -82,7 +105,7 @@ char keypad_scan() {
 }
 
 // ----------------------------------------------------------------
-// Font, SPI, and display code (unchanged from before)
+// Font, SPI, and display code
 // ----------------------------------------------------------------
 
 static const uint8_t font5x8[][5] PROGMEM = {
@@ -268,29 +291,6 @@ void ili9341_draw_string(uint16_t x, uint16_t y, const char *str,
     }
 }
 
-// ----------------------------------------------------------------
-// Color definitions
-// ----------------------------------------------------------------
-#define BLACK   0x0000
-#define WHITE   0xFFFF
-#define RED     0xF800
-#define GREEN   0x07E0
-#define BLUE    0x001F
-#define YELLOW  0xFFE0
-#define CYAN    0x07FF
-
-// ----------------------------------------------------------------
-// Main: display typed keys on screen
-// ----------------------------------------------------------------
-
-// Screen is 240 wide, 320 tall. At scale 3, each char is 18x24px.
-// That gives us 13 chars per row, 13 rows per screen.
-#define CHAR_SCALE  3
-#define CHAR_W      (6 * CHAR_SCALE)   // 18
-#define CHAR_H      (8 * CHAR_SCALE)   // 24
-#define COLS        (240 / CHAR_W)     // 13 chars per row
-#define ROWS        (320 / CHAR_H)     // 13 rows
-
 
 void buzzer_init() {
     // PD6 (OC0A) as output
@@ -324,7 +324,6 @@ void buzzer_off() {
 char pass[4] = {'1', '2', '3', '4'};
 int correct = 0;
 
-#define SERVO PB1
 
 
 volatile uint16_t servo_angle = 1500;
@@ -386,23 +385,19 @@ int main(void) {
     while (1) {
         char key = keypad_scan();
 
-
         if (correct == 4) {
             // Unlocked: set servo to open position
             OCR1A = 4000; // 2 ms pulse for 180
             if (!unlocked_drawn) {
-            ili9341_fill(GREEN);
-            ili9341_draw_string(20, 150, "UNLOCKED", WHITE, GREEN, 4);
-            unlocked_drawn = 1;
-        }
+                ili9341_fill(GREEN);
+                ili9341_draw_string(20, 150, "UNLOCKED", WHITE, GREEN, 4);
+                unlocked_drawn = 1;
+            }
         } else {
             // Locked: set servo to closed position
             OCR1A = 2000; // 1 ms pulse for 0
         }
 
-        
-
-        
         if (key) {
             if (correct == 4) continue; // Ignore input after unlocked
 
