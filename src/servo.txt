@@ -1,0 +1,74 @@
+#include <avr/io.h>
+
+#define SERVO PB1
+
+
+volatile uint16_t servo_angle = 1500;
+
+void servo_init() {
+    DDRB |= (1 << SERVO);
+
+    // Fast PWM, TOP = ICR1
+    TCCR1A = (1 << WGM11);
+    TCCR1B = (1 << WGM13) | (1 << WGM12);
+
+    // Non-inverting PWM
+    TCCR1A |= (1 << COM1A1);
+
+    // Prescaler 8
+    TCCR1B |= (1 << CS11);
+
+    // 50 Hz (20 ms period)
+    ICR1 = 40000;
+}
+
+void servo_set_angle(uint8_t angle) {
+    if (angle > 180) angle = 180;
+
+    // Map 0–180° → 2000–4000 ticks (~1ms–2ms pulse)
+    uint16_t pulse = 2000 + ((uint32_t)angle * 2000) / 180;
+
+    OCR1A = pulse;
+}
+
+void buzzer_init() {
+    // PD6 (OC0A) as output
+    DDRD |= (1 << PD6);
+
+    // Timer0 CTC mode (WGM01 = 1)
+    TCCR0A = (1 << WGM01);
+
+    // Toggle OC0A on compare match
+    TCCR0A |= (1 << COM0A0);
+
+    // Prescaler = 64
+    TCCR0B = (1 << CS01) | (1 << CS00);
+
+    // 1 kHz tone:
+    // OCR0A = (F_CPU / (2 * prescaler * freq)) - 1
+    OCR0A = 124;
+}
+
+void buzzer_on() {
+    // Timer running already produces tone
+    TCCR0A |= (1 << COM0A0);
+}
+
+void buzzer_off() {
+    // Disconnect output compare -> pin becomes normal GPIO
+    TCCR0A &= ~(1 << COM0A0);
+    PORTD &= ~(1 << PD6);
+}
+
+int main() {
+    servo_init();
+    while (1) {
+        OCR1A = 2000;   // 0 degrees
+
+        for (volatile uint32_t i = 0; i < 800000; i++);
+
+        OCR1A = 4000;   // 180 degrees
+
+        for (volatile uint32_t i = 0; i < 800000; i++);
+    }
+}

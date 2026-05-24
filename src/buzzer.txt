@@ -1,0 +1,45 @@
+#include <avr/io.h>
+#include <util/delay.h>
+
+void buzzer_init() {
+    // PD6 (OC0A) as output
+    DDRD |= (1 << PD6);
+
+    // Timer0 CTC mode (WGM01 = 1)
+    TCCR0A = (1 << WGM01);
+
+    // Toggle OC0A on compare match
+    TCCR0A |= (1 << COM0A0);
+
+    // Prescaler = 64
+    TCCR0B = (1 << CS01) | (1 << CS00);
+
+    // 1 kHz tone:
+    // OCR0A = (F_CPU / (2 * prescaler * freq)) - 1
+    OCR0A = 124;
+}
+
+void buzzer_on() {
+    // Timer running already produces tone
+    TCCR0A |= (1 << COM0A0);
+}
+
+void buzzer_off() {
+    // Disconnect output compare -> pin becomes normal GPIO
+    TCCR0A &= ~(1 << COM0A0);
+    PORTD &= ~(1 << PD6);
+}
+
+int main() {
+    buzzer_init();
+
+    while (1) {
+        buzzer_on();
+
+        _delay_ms(500);
+
+        buzzer_off();
+
+        _delay_ms(500);
+    }
+}
