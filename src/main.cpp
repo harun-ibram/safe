@@ -363,6 +363,9 @@ int main(void) {
     RES_HIGH();
     DC_LOW();
 
+
+    spi_init();
+    ili9341_init();
     buzzer_init();
     keypad_init();
     servo_init();
@@ -373,20 +376,78 @@ int main(void) {
     _delay_ms(200);
     buzzer_off();
 
+    ili9341_fill(BLACK);
+
+    uint8_t cur_col = 0;  // Current character column (0..COLS-1)
+    uint8_t cur_row = 0;  // Current character row    (0..ROWS-1)
+
+    uint8_t unlocked_drawn = 0;
+
     while (1) {
         char key = keypad_scan();
+
+
         if (correct == 4) {
             // Unlocked: set servo to open position
-            OCR1A = 4000; // 2 ms pulse for 180°
+            OCR1A = 4000; // 2 ms pulse for 180
+            if (!unlocked_drawn) {
+            ili9341_fill(GREEN);
+            ili9341_draw_string(20, 150, "UNLOCKED", WHITE, GREEN, 4);
+            unlocked_drawn = 1;
+        }
         } else {
             // Locked: set servo to closed position
-            OCR1A = 2000; // 1 ms pulse for 0°
+            OCR1A = 2000; // 1 ms pulse for 0
         }
+
+        
+
+        
         if (key) {
+            if (correct == 4) continue; // Ignore input after unlocked
+
+            // '*' acts as backspace
+            if (key == '*') {
+                if (cur_col == 0 && cur_row == 0) continue; // Nothing to delete
+                if (cur_col == 0) { cur_row--; cur_col = COLS - 1; }
+                else { cur_col--; }
+                // Erase the character by drawing a blank
+                ili9341_draw_char(cur_col * CHAR_W, cur_row * CHAR_H,
+                                ' ', WHITE, BLACK, CHAR_SCALE);
+                continue;
+            }
+
+            // '#' clears the screen
+            if (key == '#') {
+                ili9341_fill(BLACK);
+                cur_col = 0;
+                cur_row = 0;
+                continue;
+            }
+
+            // Draw the key at current position
+            ili9341_draw_char(cur_col * CHAR_W, cur_row * CHAR_H,
+                            '*', WHITE, BLACK, CHAR_SCALE);
+
+            // Advance cursor
+            cur_col++;
+            if (cur_col >= COLS) {
+                cur_col = 0;
+                cur_row++;
+            }
+
+            // Scroll: if we hit the bottom, clear and start over
+            if (cur_row >= ROWS) {
+                ili9341_fill(BLACK);
+                cur_col = 0;
+                cur_row = 0;
+            }
+
             buzzer_on();
             _delay_ms(1000);
             buzzer_off();
-            if (correct == 4) continue; // Already unlocked, ignore further input
+
+
             if (key == pass[correct]) {
                 for (int i = 0; i < 3; i++) {
                         buzzer_on();
